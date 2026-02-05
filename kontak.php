@@ -1,7 +1,38 @@
 <?php
 require_once __DIR__ . '/config.php';
+// Include connection specifically if config didn't catch it seamlessly (redundancy check)
+if (!isset($conn)) {
+    if (file_exists(__DIR__ . '/database/koneksi.php')) include __DIR__ . '/database/koneksi.php';
+    else $conn = mysqli_connect("localhost", "root", "", "p3");
+    if (!$conn) {
+        die("Koneksi database gagal: " . mysqli_connect_error());
+    }
+}
+
 $pageTitle = 'Kontak';
 $currentPage = 'contact';
+
+$statusMsg = '';
+$statusType = '';
+
+// Handle Form Submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $name = mysqli_real_escape_string($conn, $_POST['name']);
+    $email = mysqli_real_escape_string($conn, $_POST['email']);
+    $subject = mysqli_real_escape_string($conn, $_POST['subject']);
+    $message = mysqli_real_escape_string($conn, $_POST['message']);
+
+    $query = "INSERT INTO pesan (name, email, subject, message, created_at) VALUES ('$name', '$email', '$subject', '$message', NOW())";
+
+    if (mysqli_query($conn, $query)) {
+        $statusMsg = "Pesan Anda berhasil dikirim! Kami akan segera menghubungi Anda.";
+        $statusType = "success";
+    } else {
+        $statusMsg = "Maaf, terjadi kesalahan saat mengirim pesan. Silakan coba lagi.";
+        $statusType = "error";
+    }
+}
+
 include __DIR__ . '/header.php';
 ?>
 
@@ -13,16 +44,38 @@ include __DIR__ . '/header.php';
     </header>
 
     <div class="contact-wrapper">
-        <form class="card contact-form" data-aos="fade-up">
-            <div class="grid grid-2">
-                <input type="text" placeholder="Nama Lengkap" required>
-                <input type="email" placeholder="Email" required>
-            </div>
-            <input type="text" placeholder="Subjek Pesan" required>
-            <textarea placeholder="Tulis pesan Anda" required></textarea>
-            <!-- TODO: Submit form data to backend handler -->
-            <button type="submit" class="btn btn-primary">Kirim Pesan</button>
-        </form>
+        <div class="card contact-form" data-aos="fade-up">
+            <?php if (!empty($statusMsg)) : ?>
+                <div class="alert alert-<?php echo $statusType === 'success' ? 'success' : 'danger'; ?>"
+                    style="padding:1rem; margin-bottom:1rem; border-radius:8px; 
+                            background-color: <?php echo $statusType === 'success' ? '#d1e7dd' : '#f8d7da'; ?>; 
+                            color: <?php echo $statusType === 'success' ? '#0f5132' : '#842029'; ?>;">
+                    <?php echo $statusMsg; ?>
+                </div>
+            <?php endif; ?>
+
+            <form method="POST" class="contact-form-inner">
+                <div class="form-group grid grid-2">
+                    <label class="form-control-wrapper">
+                        <span>Nama Lengkap*</span>
+                        <input type="text" name="name" placeholder="John Doe" required>
+                    </label>
+                    <label class="form-control-wrapper">
+                        <span>Email*</span>
+                        <input type="email" name="email" placeholder="email@contoh.com" required>
+                    </label>
+                </div>
+                <label class="form-control-wrapper">
+                    <span>Subjek Pesan*</span>
+                    <input type="text" name="subject" placeholder="Perihal kerjasama/pertanyaan" required>
+                </label>
+                <label class="form-control-wrapper">
+                    <span>Isi Pesan*</span>
+                    <textarea name="message" placeholder="Tuliskan pesan Anda secara detail..." rows="6" required></textarea>
+                </label>
+                <button type="submit" class="btn btn-primary btn-block">Kirim Pesan</button>
+            </form>
+        </div>
 
         <div class="card" data-aos="fade-up">
             <h3>Informasi Kontak</h3>

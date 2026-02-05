@@ -54,7 +54,7 @@ $bodyClass = $bodyClass ?? '';
                 </ul>
             </nav>
             <div class="header-cta">
-                <a href="admin/login.php" class="btn btn-header">Portal Admin</a>
+                <a href="admin/index.php" class="btn btn-header">Portal Admin</a>
             </div>
         </div>
     </header>

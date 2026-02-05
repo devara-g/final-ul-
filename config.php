@@ -1,10 +1,27 @@
 <?php
+
 /**
  * Config - SMP PGRI 3 Bogor
- * TODO: Backend - Pindahkan ke database/config table untuk pengaturan dinamis
+ * Database-driven Configuration
  */
+
+// 1. DATABASE CONNECTION
+// Cek file koneksi ada di mana (relatif terhadap file yang meng-include config.php)
+// Karena config.php ada di root, dan biasanya di-include dari root, kita cek direkturnya.
+if (file_exists(__DIR__ . '/database/koneksi.php')) {
+    include_once __DIR__ . '/database/koneksi.php';
+} elseif (file_exists(__DIR__ . '/../database/koneksi.php')) {
+    include_once __DIR__ . '/../database/koneksi.php';
+} else {
+    // Fallback jika tidak ketemu, buat koneksi manual (safety net)
+    global $conn;
+    if (!isset($conn)) {
+        $conn = mysqli_connect("localhost", "root", "", "p3");
+    }
+}
+
 $siteTitle = 'SMP PGRI 3 Bogor';
-$siteTagline = 'Berkarakter, Berprestasi, dan Berwawasan Lingkungan';
+$siteTagline = 'Berkarakter, Berprestasi, dan Religius';
 $contactInfo = [
     'phone' => '(0251) 1234 567',
     'email' => 'info@smppgri3bogor.sch.id',
@@ -14,7 +31,8 @@ $contactInfo = [
     'youtube' => 'https://youtube.com/@smppgri3bogor'
 ];
 
-// TODO: Replace with database query result for program unggulan.
+// --- STATIC DATA (Keep these static for now, or move to DB if requested) ---
+
 $programHighlights = [
     [
         'title' => 'Kurikulum Merdeka Belajar',
@@ -30,7 +48,6 @@ $programHighlights = [
     ]
 ];
 
-// TODO: Replace with database query result for ekstrakurikuler.
 $extracurriculars = [
     ['name' => 'Pramuka', 'coach' => 'Kak Rudi'],
     ['name' => 'Paskibra', 'coach' => 'Pak Fajar'],
@@ -40,31 +57,6 @@ $extracurriculars = [
     ['name' => 'Modern Dance', 'coach' => 'Miss Lala']
 ];
 
-// TODO: Replace with database-driven news feed.
-$newsPosts = [
-    [
-        'id' => 1,
-        'title' => 'Prestasi Gemilang di Olimpiade Sains',
-        'excerpt' => 'Tim sains SMP PGRI 3 Bogor meraih juara umum pada ajang Olimpiade Sains Nasional tingkat kota.',
-        'thumbnail' => 'https://picsum.photos/seed/pgri-news1/600/400',
-        'date' => '25 Januari 2026'
-    ],
-    [
-        'id' => 2,
-        'title' => 'Peresmian Laboratorium STEAM',
-        'excerpt' => 'Laboratorium baru dilengkapi peralatan robotik dan printer 3D untuk mendukung kurikulum STEAM.',
-        'thumbnail' => 'https://picsum.photos/seed/pgri-news2/600/400',
-        'date' => '18 Januari 2026'
-    ],
-    [
-        'id' => 3,
-        'title' => 'Program Adiwiyata Tingkat Nasional',
-        'excerpt' => 'Sekolah siap mengikuti penilaian Adiwiyata Nasional dengan berbagai inovasi lingkungan.',
-        'thumbnail' => 'https://picsum.photos/seed/pgri-news3/600/400',
-        'date' => '10 Januari 2026'
-    ]
-];
-
 $galleryFilters = [
     'semua' => 'Semua',
     'kegiatan' => 'Kegiatan',
@@ -72,105 +64,63 @@ $galleryFilters = [
     'prestasi' => 'Prestasi'
 ];
 
-// TODO: Replace with gallery table records.
-$galleryItems = [
-    [
-        'category' => 'kegiatan',
-        'image' => 'https://picsum.photos/seed/pgri-gal1/500/350',
-        'title' => 'Upacara Pembukaan MPLS'
-    ],
-    [
-        'category' => 'fasilitas',
-        'image' => 'https://picsum.photos/seed/pgri-gal2/500/350',
-        'title' => 'Laboratorium STEAM'
-    ],
-    [
-        'category' => 'prestasi',
-        'image' => 'https://picsum.photos/seed/pgri-gal3/500/350',
-        'title' => 'Juara Paskibra'
-    ],
-    [
-        'category' => 'kegiatan',
-        'image' => 'https://picsum.photos/seed/pgri-gal4/500/350',
-        'title' => 'Kunjungan Industri'
-    ],
-    [
-        'category' => 'fasilitas',
-        'image' => 'https://picsum.photos/seed/pgri-gal5/500/350',
-        'title' => 'Smart Library'
-    ],
-    [
-        'category' => 'prestasi',
-        'image' => 'https://picsum.photos/seed/pgri-gal6/500/350',
-        'title' => 'Medali Olimpiade Sains'
-    ]
-];
+// --- DYNAMIC DATA FROM DATABASE ---
 
-// TODO: Replace with agenda table records.
-$events = [
-    [
-        'title' => 'Rapat Orang Tua & Guru',
-        'date' => '10 Februari 2026',
-        'time' => '08.00 WIB',
-        'location' => 'Aula Utama'
-    ],
-    [
-        'title' => 'Pameran Proyek STEAM',
-        'date' => '21 Februari 2026',
-        'time' => '09.00 WIB',
-        'location' => 'Gedung Kreativitas'
-    ],
-    [
-        'title' => 'Ujian Tengah Semester',
-        'date' => '4 Maret 2026',
-        'time' => '07.00 WIB',
-        'location' => 'Seluruh Kelas'
-    ]
-];
+// 1. News Posts
+$newsPosts = [];
+if (isset($conn) && $conn) {
+    $newsQuery = mysqli_query($conn, "SELECT * FROM berita ORDER BY created_at DESC");
+    if ($newsQuery) {
+        while ($row = mysqli_fetch_assoc($newsQuery)) {
+            // Tambahkan format tanggal
+            $dateObj = date_create($row['created_at']);
+            $row['date'] = date_format($dateObj, "d M Y"); // Format untuk frontend: 05 Feb 2026
+            $newsPosts[] = $row;
+        }
+    }
+} else {
+    // Fallback empty array or static default if DB fails
+    error_log("Database connection failed in config.php");
+}
 
-// TODO: Replace with user management table records.
-$users = [
-    [
-        'name' => 'Admin Utama',
-        'role' => 'Administrator',
-        'email' => 'admin@smppgri3bogor.sch.id'
-    ],
-    [
-        'name' => 'Guru BK',
-        'role' => 'Editor',
-        'email' => 'bk@smppgri3bogor.sch.id'
-    ],
-    [
-        'name' => 'Kesiswaan',
-        'role' => 'Kontributor',
-        'email' => 'kesiswaan@smppgri3bogor.sch.id'
-    ]
-];
+// 2. Gallery Items
+$galleryItems = [];
+if (isset($conn) && $conn) {
+    $galQuery = mysqli_query($conn, "SELECT * FROM galeri ORDER BY created_at DESC");
+    if ($galQuery) {
+        while ($row = mysqli_fetch_assoc($galQuery)) {
+            $galleryItems[] = $row;
+        }
+    }
+}
 
-// TODO: Replace with messages table records.
-$messages = [
-    [
-        'id' => 1,
-        'name' => 'Budi Santoso',
-        'email' => 'budi.santoso@gmail.com',
-        'subject' => 'Pertanyaan PPDB',
-        'message' => 'Selamat siang, saya ingin bertanya mengenai jadwal pendaftaran siswa baru untuk tahun ajaran depan. Terima kasih.',
-        'date' => '3 Feb 2026'
-    ],
-    [
-        'id' => 2,
-        'name' => 'Siti Aminah',
-        'email' => 'siti.aminah@yahoo.com',
-        'subject' => 'Undangan Kerjasama',
-        'message' => 'Kami dari penerbit buku ingin menawarkan kerjasama pengadaan buku perpustakaan.',
-        'date' => '2 Feb 2026'
-    ],
-    [
-        'id' => 3,
-        'name' => 'Rina Aulia',
-        'email' => 'rina.aulia88@gmail.com',
-        'subject' => 'Keluhan Fasilitas',
-        'message' => 'Mohon diperbaiki AC di ruang kelas 8B yang sepertinya rusak/tidak dingin.',
-        'date' => '1 Feb 2026'
-    ]
-];
+// 3. Events (Kalender Acara)
+$events = [];
+if (isset($conn) && $conn) {
+    // Ambil event yang belum lewat (atau semua update logic sesuai kebutuhan)
+    // Disini ambil semua diurutkan tanggal
+    $eventQuery = mysqli_query($conn, "SELECT * FROM kalender_acara ORDER BY event_date ASC, event_time ASC");
+    if ($eventQuery) {
+        while ($row = mysqli_fetch_assoc($eventQuery)) {
+            // Mapping field names to frontend expected keys if different
+            // Database: title, event_date, event_time, location
+            // Config array expects: title, date, time, location
+            $dateObj = date_create($row['event_date']);
+            $timeObj = date_create($row['event_time']);
+
+            $frontendEvent = [
+                'id' => $row['id'],
+                'title' => $row['title'],
+                'date' => date_format($dateObj, "d M Y"),
+                'time' => date_format($timeObj, "H.i") . ' WIB',
+                'location' => $row['location'],
+                'description' => $row['description'] ?? ''
+            ];
+            $events[] = $frontendEvent;
+        }
+    }
+}
+
+// 4. Messages (Admin Only - usually fetched in admin panel, but defined here for completeness if needed)
+$messages = [];
+// Tidak perlu di-fetch global untuk public frontend demi keamanan/performance.
